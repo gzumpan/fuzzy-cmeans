@@ -60,4 +60,5 @@ public:
 	CEdit m_editFuzziness;
 	CEdit m_editTermination;
 	afx_msg void OnDestroy();
+	CStatic m_stcOutput;
 };

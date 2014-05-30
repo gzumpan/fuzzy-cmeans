@@ -30,6 +30,7 @@ namespace Clustering
 
 	public:
 		void	FCMClustering(unsigned int nIter = 100);
+		CString	GetLogView() { return m_szLogView; }
 
 	private:
 		void	RamdomMembership();
@@ -54,5 +55,6 @@ namespace Clustering
 		Matrix*			m_pNewMembership;	// new membership.
 
 		CLogger*		m_pLogger;
+		CString			m_szLogView;		// View data in dialog.
 	};
 };

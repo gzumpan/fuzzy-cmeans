@@ -8,6 +8,7 @@ namespace Clustering
 	CFuzzy::CFuzzy(Matrix* pdataset, int nc, double dm, double deps)
 	{
 		m_pLogger = CLogger::Instance();
+		m_szLogView.Empty();
 
 		m_nc	= nc;
 		m_dm	= dm;
@@ -44,10 +45,16 @@ namespace Clustering
 
 	void CFuzzy::RamdomMembership()
 	{
+		CString szTmp;
 		m_pLogger->LogNoPrefix("\nMatrix U[0](Random)\n===============\n");
+		m_szLogView += _T("\nMatrix U[0](Random)\n===============\n");
+
+		// for log.
 		for (int j = 0; j < m_nc; j++)
 		{
 			m_pLogger->LogNoPrefix("#Cluster[%d]\t", j);
+			szTmp.Format(_T("#Cluster[%d]\t"), j);
+			m_szLogView += szTmp;
 		}
 
 		double fNormalizationFactor;
@@ -55,6 +62,8 @@ namespace Clustering
 		for (int i = 0; i < m_nNumberPoints; i++)
 		{
 			m_pLogger->LogNoPrefix("\n");
+			m_szLogView += _T("\n");
+
 			fNormalizationFactor = 0.0;
 
 			for (int j = 0; j < m_nc; j++)
@@ -65,7 +74,10 @@ namespace Clustering
 			for (int j = 0; j < m_nc; j++)
 			{
 				(*m_pMembership)(j,i) /= fNormalizationFactor;
+
 				m_pLogger->LogNoPrefix("%f\t", (*m_pMembership)(j, i));
+				szTmp.Format(_T("%f\t"), (*m_pMembership)(j, i));
+				m_szLogView += szTmp;
 			}
 		}
 	}
@@ -105,6 +117,8 @@ namespace Clustering
 			}
 
 			m_pLogger->LogNoPrefix("\nCentroid C%d = (%s)", j, FCMUtil::ToString(szAbt).c_str());
+			szTmp.Format(_T("\nCentroid C%d = (%s)"), j, szAbt);
+			m_szLogView += szTmp;
 		}
 	}
 
@@ -169,16 +183,23 @@ namespace Clustering
 			}
 
 			m_pLogger->LogNoPrefix("\nCentroid C%d = (%s)", j, FCMUtil::ToString(szAbt).c_str());
+			szTmp.Format(_T("\nCentroid C%d = (%s)"), j, szAbt);
+			m_szLogView += szTmp;
 		}
 		//////////////////////////////////////////////////////////////////////////
 	}
 
 	bool CFuzzy::UpdateMembership()
 	{
+		CString szTmp;
 		m_pLogger->LogNoPrefix("\n");
+		m_szLogView += _T("\n");
+
 		for (int j = 0; j < m_nc; j++)
 		{
 			m_pLogger->LogNoPrefix("#Cluster[%d]\t", j);
+			szTmp.Format(_T("#Cluster[%d]\t"), j);
+			m_szLogView += szTmp;
 		}
 
 		Matrix matrix_norm_one_xi_minus_cj(m_nNumberPoints, m_nc);
@@ -212,6 +233,7 @@ namespace Clustering
 		for (int i = 0 ; i < m_nNumberPoints; i++)
 		{
 			m_pLogger->LogNoPrefix("\n");
+			m_szLogView += _T("\n");
 
 			// for each cluster
 			for (int j = 0; j < m_nc; j++)
@@ -226,7 +248,11 @@ namespace Clustering
 				}
 
 				(*m_pNewMembership)(j, i) = 1 / coeff;
+
+				// for log.
 				m_pLogger->LogNoPrefix("%f\t", (*m_pNewMembership)(j, i));
+				szTmp.Format(_T("%f\t"), (*m_pNewMembership)(j, i));
+				m_szLogView += szTmp;
 			}
 		}
 
@@ -250,15 +276,22 @@ namespace Clustering
 	void CFuzzy::FCMClustering(unsigned int nIter)
 	{
 		unsigned int nloop = 0;
+		CString szTmp;
 		
 		m_pLogger->LogNoPrefix("\n\nMatrix U[%d]\n===============", nloop + 1);
+		szTmp.Format(_T("\n\nMatrix U[%d]\n==============="), nloop + 1);
+		m_szLogView += szTmp;
 
 		while (!UpdateMembership() && (nloop++ < nIter))
 		{
 			ComputeCentroids2();
+
 			m_pLogger->LogNoPrefix("\n\nMatrix U[%d]\n===============", nloop + 1);
+			szTmp.Format(_T("\n\nMatrix U[%d]\n==============="), nloop + 1);
+			m_szLogView += szTmp;
 		}
 
 		m_pLogger->LogNoPrefix("\n=====End=====\n\n");
+		m_szLogView += _T("\n=====End=====\n\n");
 	}
 };
