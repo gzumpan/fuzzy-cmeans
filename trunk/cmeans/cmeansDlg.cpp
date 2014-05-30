@@ -56,7 +56,7 @@ CcmeansDlg::CcmeansDlg(CWnd* pParent /*=NULL*/)
 	m_pFCM			= NULL;
 	m_pfcmReadFile	= NULL;
 	m_pLogger		= CLogger::Instance();
-	m_pLogger->Initialize(FCM_LOGPATH.c_str(), DLogModeAll);
+	m_pLogger->Initialize(FCMUtil::ToString(FCM_LOGPATH).c_str(), DLogModeAll);
 }
 
 void CcmeansDlg::DoDataExchange(CDataExchange* pDX)
@@ -67,6 +67,7 @@ void CcmeansDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_NUMBER_CLUSTER, m_editCluster);
 	DDX_Control(pDX, IDC_EDIT_FUZZINESS_EXPONENT, m_editFuzziness);
 	DDX_Control(pDX, IDC_EDIT_TERMINATION_TOLERANCE, m_editTermination);
+	DDX_Control(pDX, IDC_STC_OUTPUT, m_stcOutput);
 }
 
 BEGIN_MESSAGE_MAP(CcmeansDlg, CDialogEx)
@@ -229,6 +230,8 @@ void CcmeansDlg::OnBnClickedBtnStart()
 		if (InitFCM(*m_pfcmReadFile))
 		{
 			m_pFCM->FCMClustering();
+	
+			m_stcOutput.SetWindowText(m_pFCM->GetLogView());
 		}
 	}
 }
