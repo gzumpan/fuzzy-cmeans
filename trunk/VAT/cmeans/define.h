@@ -3,6 +3,7 @@
 
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
 
 // Data type.
 typedef boost::numeric::ublas::vector<double> Vector;
@@ -10,6 +11,10 @@ typedef boost::numeric::ublas::zero_vector<double> ZeroVector;
 
 typedef boost::numeric::ublas::matrix<double> Matrix;
 typedef boost::numeric::ublas::zero_matrix<double> ZeroMatrix;
+
+typedef boost::shared_ptr<Matrix> MatrixPtr;
+
+typedef CArray<double, double&>		DoubleArray;
 
 #define SUBCLUS_PROPORTION(a,b,c,d)		((a/b + c/d - 1) < 0.0)
 
@@ -26,5 +31,12 @@ const CString FILE_DATA_INFO			= _T("Instances : %d, Attributes : %d");
 
 const CString FCM_DELIMITER				= _T(" ,");
 const std::string FCM_LOGPATH			= "D:\\log.txt";
+
+typedef struct _Distance2Objects
+{
+	int		iObj;
+	int		jObj;
+	double	distance;
+} Distance2Objects;
 
 #endif //FCM_DEFINE_H
