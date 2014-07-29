@@ -36,6 +36,7 @@ public:
 
 	bool	ParsingTextFile(CString delimiter = FCM_DELIMITER);
 	Matrix*	GetMatrixData();
+	DoubleArray& GetDataSet() { return m_data; }
 
 private:
 	void	ParsingLine(CString szLine, CString szDelimiter = FCM_DELIMITER);
@@ -44,7 +45,7 @@ private:
 	int		GetNumberColumsMulti(CString szDelimiter = FCM_DELIMITER);
 
 private:
-	CArray<double, double&>		m_data;
+	DoubleArray					m_data;
 	int							m_nRows;
 	int							m_nCols;
 };

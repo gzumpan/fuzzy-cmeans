@@ -7,6 +7,7 @@
 #include "FuzzyClustering.h"
 #include "afxwin.h"
 #include "ReadWriteFile.h"
+#include "VATAlgorithm.h"
 
 using namespace Clustering;
 
@@ -44,15 +45,18 @@ public:
 
 private:
 	BOOL	InitFCM(CFCMReadFile& fcmReadFile);
+	void	DrawImage();
 
 private:
 	CButton m_btnStart;
 	CButton m_btnStop;
 
 private:
+	CVATAlgorithm			m_pVATAlg;
 	CFuzzy*					m_pFCM;
 	CLogger*				m_pLogger;
 	CFCMReadFile*			m_pfcmReadFile;
+	CString					m_szFilePath;
 
 public:
 	afx_msg void OnBnClickedBtnStart();

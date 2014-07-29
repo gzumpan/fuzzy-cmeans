@@ -161,6 +161,7 @@ void CcmeansDlg::OnPaint()
 	else
 	{
 		CDialogEx::OnPaint();
+		DrawImage();
 	}
 }
 
@@ -189,7 +190,6 @@ void CcmeansDlg::OnDestroy()
 
 void CcmeansDlg::OnBnClickedOpenFile()
 {
-	CString pathName;
 	CString szInfo;
 
 	// Create an Open dialog; the default file name extension is ".my".
@@ -201,7 +201,7 @@ void CcmeansDlg::OnBnClickedOpenFile()
 	// returns IDOK. 
 	if(fileDlg.DoModal() == IDOK)
 	{
-		pathName = fileDlg.GetPathName();
+		m_szFilePath = fileDlg.GetPathName();
 
 		// Implement opening and reading file in here. 		
 		if (m_pfcmReadFile)
@@ -209,15 +209,14 @@ void CcmeansDlg::OnBnClickedOpenFile()
 			delete m_pfcmReadFile;
 			m_pfcmReadFile = NULL;
 		}
-		m_pfcmReadFile = new CFCMReadFile(pathName);
+		m_pfcmReadFile = new CFCMReadFile(m_szFilePath);
 		
 		ASSERT(m_pfcmReadFile->IsOpen());
 
 		m_pfcmReadFile->ParsingTextFile();
-		szInfo.Format(FILE_DATA_INFO, m_pfcmReadFile->GetRows(), m_pfcmReadFile->GetColumns());
-		
-		::SetWindowText(GetDlgItem(IDC_EDIT_FILE_INFO)->GetSafeHwnd(), szInfo);
 
+		szInfo.Format(FILE_DATA_INFO, m_pfcmReadFile->GetRows(), m_pfcmReadFile->GetColumns());		
+		::SetWindowText(GetDlgItem(IDC_EDIT_FILE_INFO)->GetSafeHwnd(), szInfo);
 		UpdateStatus(TRUE, FALSE);
 	}
 }
@@ -229,7 +228,7 @@ void CcmeansDlg::OnBnClickedBtnStart()
 	{
 		if (InitFCM(*m_pfcmReadFile))
 		{
-			m_pFCM->FCMClustering();
+			//m_pFCM->FCMClustering();
 		}
 	}
 }
@@ -241,6 +240,16 @@ BOOL CcmeansDlg::InitFCM(CFCMReadFile& fcmReadFile)
 	double eps = 0.01; // termination tolerance.
 	Matrix* pdataset;
 	CString sztmp;
+
+	// Testing VAT algorithm
+	CWaitCursor wait;
+	DoubleArray& arrDataSet = fcmReadFile.GetDataSet();
+	m_pVATAlg.InitFilePath(m_szFilePath);
+	m_pVATAlg.Initialize(arrDataSet, fcmReadFile.GetRows(), fcmReadFile.GetColumns());
+	wait.Restore();
+	Invalidate();
+	return FALSE;
+
 
 	if (m_pFCM)	{ delete m_pFCM; }
 
@@ -280,4 +289,45 @@ BOOL CcmeansDlg::InitFCM(CFCMReadFile& fcmReadFile)
 	}
 
 	return TRUE;
+}
+
+void CcmeansDlg::DrawImage()
+{
+	ATL::CImage* pOriginalImage;
+	ATL::CImage* pReorderedImage;
+	
+	pOriginalImage  = m_pVATAlg.GetOriginalImage();
+	pReorderedImage = m_pVATAlg.GetReorderedImage();
+
+
+	if( pOriginalImage->IsNull() || pReorderedImage->IsNull())
+	{
+		return;
+	}
+
+	// Draw original image
+	CWnd* pOriWnd = GetDlgItem( IDC_STATIC_PC_ORIGINAL_IMG );
+	CDC* pDC = pOriWnd->GetDC();
+
+	pDC->SetStretchBltMode(COLORONCOLOR);
+
+	CRect rect;
+	pOriWnd->GetClientRect( &rect );
+	ClientToScreen( &rect );
+
+	int newWidth = rect.Width();//(pOriginalImage->GetWidth()*rect.Height()) / pOriginalImage->GetHeight();
+	int newHeight = rect.Height();
+
+	pOriginalImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
+
+	pOriWnd->ReleaseDC(pDC);
+
+	// Draw reordered image.
+	CWnd* pReordWnd = GetDlgItem( IDC_STATIC_PC_REORDERED_IMG );
+	pDC = pReordWnd->GetDC();
+	pDC->SetStretchBltMode(COLORONCOLOR);
+	pReordWnd->GetClientRect( &rect );
+	ClientToScreen( &rect );
+	pReorderedImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
+	pReordWnd->ReleaseDC(pDC);
 }

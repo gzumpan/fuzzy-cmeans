@@ -121,6 +121,7 @@
     <ClInclude Include="Unicode\ConvertUTF.h" />
     <ClInclude Include="Unicode\UnicodeUtil.h" />
     <ClInclude Include="Unicode\UTF16File.h" />
+    <ClInclude Include="VATAlgorithm.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cmeans.cpp" />
@@ -139,6 +140,7 @@
     <ClCompile Include="Unicode\ConvertUTF.cpp" />
     <ClCompile Include="Unicode\UnicodeUtil.cpp" />
     <ClCompile Include="Unicode\UTF16File.cpp" />
+    <ClCompile Include="VATAlgorithm.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="cmeans.rc" />
