@@ -3,7 +3,7 @@
 
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
+#include <boost/smart_ptr.hpp>
 
 // Data type.
 typedef boost::numeric::ublas::vector<double> Vector;
