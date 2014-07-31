@@ -65,9 +65,6 @@ void CcmeansDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_BTN_START, m_btnStart);
 	DDX_Control(pDX, IDC_BTN_STOP, m_btnStop);
-	DDX_Control(pDX, IDC_EDIT_NUMBER_CLUSTER, m_editCluster);
-	DDX_Control(pDX, IDC_EDIT_FUZZINESS_EXPONENT, m_editFuzziness);
-	DDX_Control(pDX, IDC_EDIT_TERMINATION_TOLERANCE, m_editTermination);
 }
 
 BEGIN_MESSAGE_MAP(CcmeansDlg, CDialogEx)
@@ -113,11 +110,6 @@ BOOL CcmeansDlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 	UpdateStatus(FALSE, FALSE);
-
-	// init data for edit box.
-	m_editCluster.SetWindowText(_T("0.5"));
-	m_editFuzziness.SetWindowText(_T("2.0"));
-	m_editTermination.SetWindowText(_T("0.01"));
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -256,7 +248,7 @@ BOOL CcmeansDlg::InitFCM(CFCMReadFile& fcmReadFile)
 	pdataset = fcmReadFile.GetMatrixData();
 
 	// cluster
-	m_editCluster.GetWindowText(sztmp);
+//	m_editCluster.GetWindowText(sztmp);
 	if (!sztmp.IsEmpty())
 	{
 		//c = FCMUtil::toInt(sztmp);
@@ -268,14 +260,14 @@ BOOL CcmeansDlg::InitFCM(CFCMReadFile& fcmReadFile)
 	}
 
 	// fuzziness exponent.
-	m_editFuzziness.GetWindowText(sztmp);
+//	m_editFuzziness.GetWindowText(sztmp);
 	if (!sztmp.IsEmpty())
 	{
 		m = FCMUtil::toDouble(sztmp);
 	}
 
 	// Termination tolerance
-	m_editTermination.GetWindowText(sztmp);
+//	m_editTermination.GetWindowText(sztmp);
 	if (sztmp.IsEmpty())
 	{
 		eps = FCMUtil::toDouble(sztmp);
@@ -294,25 +286,28 @@ BOOL CcmeansDlg::InitFCM(CFCMReadFile& fcmReadFile)
 void CcmeansDlg::DrawImage()
 {
 	ATL::CImage* pOriginalImage;
-	ATL::CImage* pReorderedImage;
+	ATL::CImage* pVATImage;
+	ATL::CImage* piVATImage;
 	
 	pOriginalImage  = m_pVATAlg.GetOriginalImage();
-	pReorderedImage = m_pVATAlg.GetReorderedImage();
+	pVATImage = m_pVATAlg.GetVATImage();
+	piVATImage = m_pVATAlg.GetiVATImage();
 
 
-	if( pOriginalImage->IsNull() || pReorderedImage->IsNull())
+	if( pOriginalImage->IsNull() || pVATImage->IsNull())
 	{
 		return;
 	}
 
+	CWnd* pWnd;
 	// Draw original image
-	CWnd* pOriWnd = GetDlgItem( IDC_STATIC_PC_ORIGINAL_IMG );
-	CDC* pDC = pOriWnd->GetDC();
+	pWnd = GetDlgItem( IDC_PC_ORIGINAL_IMG );
+	CDC* pDC = pWnd->GetDC();
 
 	pDC->SetStretchBltMode(COLORONCOLOR);
 
 	CRect rect;
-	pOriWnd->GetClientRect( &rect );
+	pWnd->GetClientRect( &rect );
 	ClientToScreen( &rect );
 
 	int newWidth = rect.Width();//(pOriginalImage->GetWidth()*rect.Height()) / pOriginalImage->GetHeight();
@@ -320,14 +315,23 @@ void CcmeansDlg::DrawImage()
 
 	pOriginalImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
 
-	pOriWnd->ReleaseDC(pDC);
+	pWnd->ReleaseDC(pDC);
 
-	// Draw reordered image.
-	CWnd* pReordWnd = GetDlgItem( IDC_STATIC_PC_REORDERED_IMG );
-	pDC = pReordWnd->GetDC();
+	// Draw VAT image.
+	pWnd = GetDlgItem( IDC_PC_VAT_IMG );
+	pDC = pWnd->GetDC();
 	pDC->SetStretchBltMode(COLORONCOLOR);
-	pReordWnd->GetClientRect( &rect );
+	pWnd->GetClientRect( &rect );
 	ClientToScreen( &rect );
-	pReorderedImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
-	pReordWnd->ReleaseDC(pDC);
+	pVATImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
+	pWnd->ReleaseDC(pDC);
+
+	// Draw iVAT image.
+	pWnd = GetDlgItem( IDC_PC_IVAT_IMG );
+	pDC = pWnd->GetDC();
+	pDC->SetStretchBltMode(COLORONCOLOR);
+	pWnd->GetClientRect( &rect );
+	ClientToScreen( &rect );
+	piVATImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
+	pWnd->ReleaseDC(pDC);
 }

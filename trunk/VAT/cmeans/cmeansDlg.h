@@ -60,8 +60,5 @@ private:
 
 public:
 	afx_msg void OnBnClickedBtnStart();
-	CEdit m_editCluster;
-	CEdit m_editFuzziness;
-	CEdit m_editTermination;
 	afx_msg void OnDestroy();
 };
