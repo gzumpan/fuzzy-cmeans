@@ -56,6 +56,8 @@ CcmeansDlg::CcmeansDlg(CWnd* pParent /*=NULL*/)
 	m_hIcon			= AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	m_pFCM			= NULL;
 	m_pfcmReadFile	= NULL;
+	m_pRenderData	= NULL;
+	m_nSizeRender	= 0;
 	m_pLogger		= CLogger::Instance();
 	m_pLogger->Initialize(FCM_LOGPATH.c_str(), DLogModeAll);
 }
@@ -154,6 +156,7 @@ void CcmeansDlg::OnPaint()
 	{
 		CDialogEx::OnPaint();
 		DrawImage();
+		DrawGraph();
 	}
 }
 
@@ -178,6 +181,7 @@ void CcmeansDlg::OnDestroy()
 	if (m_pFCM)	   { delete m_pFCM; }
 	if (m_pLogger) { delete m_pLogger; }
 	if (m_pfcmReadFile) { delete m_pfcmReadFile; }
+	if (m_pRenderData) { delete[] m_pRenderData; }
 }
 
 void CcmeansDlg::OnBnClickedOpenFile()
@@ -225,6 +229,35 @@ void CcmeansDlg::OnBnClickedBtnStart()
 	}
 }
 
+void CcmeansDlg::InitRenderData(Matrix& dataset, int width, int height)
+{
+	int xCoord, yCoord;
+	int nsize = 0;
+	double dScaleX, dScaleY;
+	double dMinX, dMaxX, dMinY, dMaxY;
+	
+	if (m_pRenderData) {
+		delete[] m_pRenderData;
+	}
+
+	m_nSizeRender = dataset.size1()*2;
+	m_pRenderData = new double[m_nSizeRender];
+	xCoord = m_pfcmReadFile->GetxCoord();
+	yCoord = m_pfcmReadFile->GetyCoord();
+	dMinX = m_pfcmReadFile->GetMinX();
+	dMaxX = m_pfcmReadFile->GetMaxX();
+	dMinY = m_pfcmReadFile->GetMinY();
+	dMaxY = m_pfcmReadFile->GetMaxY();
+
+	dScaleX = width / (dMaxX - dMinX);
+	dScaleY = height / (dMaxY - dMinY);
+
+	for (int r = 0; r < dataset.size1(); ++r) {
+		m_pRenderData[nsize++] = 0 + (dataset(r, xCoord) - dMinX) * dScaleX;
+		m_pRenderData[nsize++] = 0 + (dataset(r, yCoord) - dMinY) * dScaleY;
+	}
+}
+
 BOOL CcmeansDlg::InitFCM(CFCMReadFile& fcmReadFile)
 {
 	int c = 2; // number cluster.
@@ -238,6 +271,11 @@ BOOL CcmeansDlg::InitFCM(CFCMReadFile& fcmReadFile)
 	DoubleArray& arrDataSet = fcmReadFile.GetDataSet();
 	m_pVATAlg.InitFilePath(m_szFilePath);
 	m_pVATAlg.Initialize(arrDataSet, fcmReadFile.GetRows(), fcmReadFile.GetColumns());
+
+	// Init render data.
+	pdataset = fcmReadFile.GetMatrixData();
+	InitRenderData(*pdataset, 150, 150);
+
 	wait.Restore();
 	Invalidate();
 	return FALSE;
@@ -285,53 +323,85 @@ BOOL CcmeansDlg::InitFCM(CFCMReadFile& fcmReadFile)
 
 void CcmeansDlg::DrawImage()
 {
-	ATL::CImage* pOriginalImage;
-	ATL::CImage* pVATImage;
-	ATL::CImage* piVATImage;
+	ATL::CImage* pOriginalImage = NULL;
+	ATL::CImage* pVATImage = NULL;
+	ATL::CImage* piVATImage = NULL;
+	CWnd* pWnd = NULL;
+	CDC* pDC = NULL;
+	int newWidth, newHeight;
+	CRect rect;
 	
+	// Draw original image
 	pOriginalImage  = m_pVATAlg.GetOriginalImage();
-	pVATImage = m_pVATAlg.GetVATImage();
-	piVATImage = m_pVATAlg.GetiVATImage();
+	if (!pOriginalImage->IsNull()) {
+		pWnd = GetDlgItem( IDC_PC_ORIGINAL_IMG );
+		pDC = pWnd->GetDC();
+		pDC->SetStretchBltMode(COLORONCOLOR);
 
+		pWnd->GetClientRect( &rect );
+		ClientToScreen( &rect );
 
-	if( pOriginalImage->IsNull() || pVATImage->IsNull())
-	{
-		return;
+		newWidth = rect.Width();//(pOriginalImage->GetWidth()*rect.Height()) / pOriginalImage->GetHeight();
+		newHeight = rect.Height();
+
+		pOriginalImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
+
+		pWnd->ReleaseDC(pDC);
 	}
 
-	CWnd* pWnd;
-	// Draw original image
-	pWnd = GetDlgItem( IDC_PC_ORIGINAL_IMG );
-	CDC* pDC = pWnd->GetDC();
-
-	pDC->SetStretchBltMode(COLORONCOLOR);
-
-	CRect rect;
-	pWnd->GetClientRect( &rect );
-	ClientToScreen( &rect );
-
-	int newWidth = rect.Width();//(pOriginalImage->GetWidth()*rect.Height()) / pOriginalImage->GetHeight();
-	int newHeight = rect.Height();
-
-	pOriginalImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
-
-	pWnd->ReleaseDC(pDC);
 
 	// Draw VAT image.
-	pWnd = GetDlgItem( IDC_PC_VAT_IMG );
-	pDC = pWnd->GetDC();
-	pDC->SetStretchBltMode(COLORONCOLOR);
-	pWnd->GetClientRect( &rect );
-	ClientToScreen( &rect );
-	pVATImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
-	pWnd->ReleaseDC(pDC);
+	pVATImage = m_pVATAlg.GetVATImage();
+	if (!pVATImage->IsNull()) {
+		pWnd = GetDlgItem( IDC_PC_VAT_IMG );
+		pDC = pWnd->GetDC();
+		pDC->SetStretchBltMode(COLORONCOLOR);
+		pWnd->GetClientRect( &rect );
+		ClientToScreen( &rect );
+		pVATImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
+		pWnd->ReleaseDC(pDC);
+	}
 
-	// Draw iVAT image.
-	pWnd = GetDlgItem( IDC_PC_IVAT_IMG );
-	pDC = pWnd->GetDC();
-	pDC->SetStretchBltMode(COLORONCOLOR);
-	pWnd->GetClientRect( &rect );
-	ClientToScreen( &rect );
-	piVATImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
-	pWnd->ReleaseDC(pDC);
+	// iVAT image.
+	piVATImage = m_pVATAlg.GetiVATImage();
+	if (!piVATImage->IsNull()){
+		// Draw iVAT image.
+		pWnd = GetDlgItem( IDC_PC_IVAT_IMG );
+		pDC = pWnd->GetDC();
+		pDC->SetStretchBltMode(COLORONCOLOR);
+		pWnd->GetClientRect( &rect );
+		ClientToScreen( &rect );
+		piVATImage->Draw( pDC->GetSafeHdc(), 0, 0, newWidth, newHeight );
+		pWnd->ReleaseDC(pDC);
+	}
+}
+
+void CcmeansDlg::DrawGraph()
+{
+	CRect rect;
+	CWnd* pWnd = NULL;
+	CDC* pDC = NULL;
+	int newWidth, newHeight;
+
+	if (m_pRenderData) {
+		pWnd = GetDlgItem( IDC_PC_VAT_GRAPH_IMG);
+		pDC = pWnd->GetDC();
+		pDC->SetStretchBltMode(COLORONCOLOR);
+		pWnd->GetClientRect( &rect );
+		ClientToScreen( &rect );
+		CPen pPen(PS_SOLID, 1, RGB(255, 0, 0));
+		CPen* pOldPen = pDC->SelectObject(&pPen);
+
+		CBrush brush;
+		brush.CreateStockObject(NULL_BRUSH);
+		CBrush* oldBrush =  (CBrush*)pDC->SelectObject(&brush);
+
+		for (int i = 0; i < m_nSizeRender; i += 2) {
+			pDC->Ellipse(m_pRenderData[i], m_pRenderData[i+1], m_pRenderData[i] + 2, m_pRenderData[i+1] + 2);
+		}
+
+		pDC->SelectObject(pOldPen);
+		pDC->SelectObject(oldBrush);
+		pWnd->ReleaseDC(pDC);
+	}
 }
