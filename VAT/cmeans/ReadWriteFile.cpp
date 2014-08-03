@@ -48,6 +48,8 @@ void CFCMReadFile::ResetData()
 {
 	m_nCols  = 0;
 	m_nRows  = 0;
+	m_xCoord = 0;
+	m_yCoord = 1;
 	m_data.RemoveAll();
 }
 
@@ -196,6 +198,8 @@ Matrix* CFCMReadFile::GetMatrixData()
 	{
 		// allocation memory.
 		pData = new Matrix(m_nRows, m_nCols);
+		m_dMinX = m_dMaxX = m_data.GetAt(m_xCoord);
+		m_dMinY = m_dMaxY = m_data.GetAt(m_yCoord);
 
 		for (int i = 0; i < m_nRows; i++)
 		{
@@ -203,6 +207,32 @@ Matrix* CFCMReadFile::GetMatrixData()
 			for (int j = 0; j < m_nCols; j++)
 			{
 				(*pData)(i, j) = m_data.GetAt(nsize + j);
+				
+				// x coordinate
+				if (j == m_xCoord) {
+					// x min.
+					if (m_dMinX > (*pData)(i, j)) {
+						m_dMinX = (*pData)(i, j);
+					}
+
+					// x max.
+					if (m_dMaxX < (*pData)(i, j)) {
+						m_dMaxX = (*pData)(i, j);
+					}
+				}
+
+				// y coordinate.
+				if (j == m_yCoord) {
+					// y min.
+					if (m_dMinY > (*pData)(i, j)) {
+						m_dMinY = (*pData)(i, j);
+					}
+
+					// y max.
+					if (m_dMaxY < (*pData)(i, j)) {
+						m_dMaxY = (*pData)(i, j);
+					}
+				}
 			}
 		}
 	}

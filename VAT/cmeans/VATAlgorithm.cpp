@@ -9,11 +9,18 @@ CVATAlgorithm::CVATAlgorithm(void)
 	m_szOriFilePath  = _T("D:\\Original.jpg");
 	m_szVATFilePath  = _T("D:\\VAT.jpg");
 	m_sziVATFilePath = _T("D:\\iVAT.jpg");
+	m_pReordered = NULL;
 }
 
 
 CVATAlgorithm::~CVATAlgorithm(void)
 {
+	if (m_pReordered) {
+		delete m_pReordered;
+	}
+
+	m_matOrigninal.reset();
+	m_matiVAT.reset();
 }
 
 void CVATAlgorithm::Initialize(DoubleArray& data, int nRow, int nCol)
@@ -26,29 +33,30 @@ void CVATAlgorithm::Initialize(DoubleArray& data, int nRow, int nCol)
 	MatrixPtr piVatMat (new Matrix(nRow, nRow));
 
 	// reference
-	m_pDissimilarityMatrix = pDisMat;
-	m_pDissimilarityMatrix->clear();
-	m_iVATMatrix = piVatMat;
-	m_iVATMatrix->clear();
+	m_matOrigninal.reset();
+	m_matOrigninal = pDisMat;
+	m_matOrigninal->clear();
+
+	m_matiVAT.reset();
+	m_matiVAT = piVatMat;
+	m_matiVAT->clear();
 	
 	// Init the first distance.
 	// For dimension.
 	distance = 0.0;
-	for (int f = 0; f < nCol; ++f)
-	{
+	for (int f = 0; f < nCol; ++f) {
 		tmp		  = data[0+f] - data[nCol+f];
 		distance += tmp*tmp;
 	}
+
 	distance = sqrt(distance);
 	m_MaxDis.iObj = m_MinDis.iObj = 0;
 	m_MaxDis.jObj = m_MinDis.jObj = 1;
 	m_MaxDis.distance = m_MinDis.distance = distance;
 
 	// Compute distance matrix - Euclidean.
-	for (int i = 0; i < nRow; ++i)
-	{
-		for (int j = 0; j < i; ++j)
-		{
+	for (int i = 0; i < nRow; ++i) {
+		for (int j = 0; j < i; ++j)	{
 			distance = 0.0;
 			iObj = i*nCol;
 			jObj = j*nCol;
@@ -62,7 +70,7 @@ void CVATAlgorithm::Initialize(DoubleArray& data, int nRow, int nCol)
 
 			// Hold the distance.
 			distance = sqrt(distance);
-			(*m_pDissimilarityMatrix)(i, j) = (*m_pDissimilarityMatrix)(j, i) = distance;
+			(*m_matOrigninal)(i, j) = (*m_matOrigninal)(j, i) = distance;
 			
 			if (m_MaxDis.distance < distance)
 			{
@@ -128,29 +136,28 @@ void CVATAlgorithm::Initialize(DoubleArray& data, int nRow, int nCol)
 // 	(*m_pDissimilarityMatrix)(4, 3) = (*m_pDissimilarityMatrix)(3, 4) = 0.74;
 // 	(*m_pDissimilarityMatrix)(4, 4) = (*m_pDissimilarityMatrix)(4, 4) = 0.0;
 
-	// Print matrix.
-//	PrintDissMatrix(m_pDissimilarityMatrix);
-	MakeGrayscaleImage(m_imgOriginal, m_pDissimilarityMatrix, m_szOriFilePath);
+	// Original image.
+//	MakeGrayscaleImage(m_imgOriginal, m_matOrigninal, m_szOriFilePath);
 
-	// Reordered matrix
-	ReorderedMatrix(m_pDissimilarityMatrix);
-	MakeGrayscaleImage(m_imgVAT, m_iVATMatrix, m_szVATFilePath);
-//	PrintDissMatrix(m_iVATMatrix);
+	// VAT algorithm
+	VATAlgorithm(m_matOrigninal);
+	MakeGrayscaleImage(m_imgVAT, m_matiVAT, m_szVATFilePath);
 
-	// iVAT
-	iVATAlgorithm();
-//	PrintDissMatrix(m_iVATMatrix);
-	MakeGrayscaleImage(m_imgiVAT, m_iVATMatrix, m_sziVATFilePath);
+	// VAT modify algorithm.
+	ModifyVAT(m_matOrigninal);
+	MakeGrayscaleImage(m_imgOriginal, m_matiVAT, m_szOriFilePath);
+#ifdef _DEBUG
+	// Print VAT matrix
+	PrintDissMatrix(m_matiVAT);
+#endif // _DEBUG
 
-	// Print reordered matrix.
-//	PrintDissMatrix(m_pDissimilarityMatrix, m_arrReordered);
-
-	// Save image
-// 	CUIntArray arr;
-// 	arr.SetSize(m_pDissimilarityMatrix->size1());
-// 	for (int i = 0; i < arr.GetSize(); ++i) arr[i] = i;
-// 	MakeGrayscaleImage(m_imgGrayscale, arr, m_szOriFilePath);
-// 	MakeGrayscaleImage(m_imgGrayscaleReordered, m_arrReordered, m_szReorderedFilePath);
+	// iVAT algorithm
+//	iVATAlgorithm();
+//	MakeGrayscaleImage(m_imgiVAT, m_matiVAT, m_sziVATFilePath);
+#ifdef _DEBUG
+	// Print iVAT matrix.
+	PrintDissMatrix(m_matiVAT);
+#endif // _DEBUG
 }
 
 void CVATAlgorithm::PrintDissMatrix(MatrixPtr mat)
@@ -187,61 +194,66 @@ void CVATAlgorithm::PrintDissMatrix(MatrixPtr mat, CUIntArray& reordered)
 	m_pLogger->LogNoPrefix("==========================================\n");
 }
 
-void CVATAlgorithm::ReorderedMatrix(MatrixPtr mat)
+void CVATAlgorithm::VATAlgorithm(MatrixPtr mat)
 {
 	int nsize;
-	CUIntArray J;
 	int i, j;
-	
+	int* J;
+
 	nsize = mat->size1();
+	J = new int[nsize];
 
 	// Step 1: init data.
-	m_arrReordered.RemoveAll();
-	m_arrReordered.SetSize(nsize);
-	J.SetSize(nsize);
+	if (m_pReordered) {
+		delete[] m_pReordered;
+	}
 
-	for (j = 0; j < nsize; ++j)
-	{
-		m_arrReordered[j] = -1;
+	m_pReordered = new int[nsize];
+
+	for (j = 0; j < nsize; ++j)	{
+		m_pReordered[j] = -1;
 		J[j] = j;
 	}
 
 	// Step 2: Select the first object.
 	i = m_MaxDis.iObj;
-	m_arrReordered[0] = i;
+	m_pReordered[0] = i;
 	J[i] = -1;
 
 	// Step 3: loop find the min.
 	for (int t = 1; t < nsize; ++t)
 	{
 		// find the min R_ij;
-		j = FindMinDis(mat, m_arrReordered, J);
+		j = FindMinDis(mat, m_pReordered, J);
 		ASSERT(j != -1);
-		m_arrReordered[t] = j;
+		m_pReordered[t] = j;
 		J[j] = -1;
 	}
 
 	// Fill iVAT matrix.
+	m_matiVAT->clear();
 	for (i = 0; i < nsize; ++i)
 	{
-		for (j = 0; j < nsize; ++j)
+		for (j = 0; j < i; ++j)
 		{
-			(*m_iVATMatrix)(i, j) = (*m_pDissimilarityMatrix)(m_arrReordered[i], m_arrReordered[j]);
+			(*m_matiVAT)(i, j) = (*m_matiVAT)(j, i) = (*mat)(m_pReordered[i], m_pReordered[j]);
 		}
 	}
+	delete[] J;
 }
 
-int CVATAlgorithm::FindMinDis(MatrixPtr mat, CUIntArray& I, CUIntArray& J)
+int CVATAlgorithm::FindMinDis(MatrixPtr mat, int* I, int* J)
 {
 	int ret = -1;
+	int nsize = mat->size1();
 	double dmin = m_MaxDis.distance;
 	
-	for (int i = 0; i < I.GetSize(); ++i)
+	for (int i = 0; i < nsize; ++i)
 	{
-		if (I[i] == (UINT)(-1)) break;
-		for (int j = 0; j < J.GetSize(); ++j)
+		if (I[i] == -1) break;
+		for (int j = 0; j < nsize; ++j)
 		{
-			if (J[j] == (UINT)(-1)) continue;
+			if (J[j] == -1) continue;
 			if (dmin > (*mat)(I[i], J[j]))
 			{
 				dmin = (*mat)(I[i], J[j]);
@@ -253,9 +265,10 @@ int CVATAlgorithm::FindMinDis(MatrixPtr mat, CUIntArray& I, CUIntArray& J)
 	return ret;
 }
 
+
 void CVATAlgorithm::MakeGrayscaleImage(ATL::CImage& imgGray, CUIntArray& arrReordered, CString szFilePath)
 {
-	int	width  = m_pDissimilarityMatrix->size1();
+	int	width  = m_matOrigninal->size1();
 	int	height = width;	
 
 	if(!imgGray.IsNull())
@@ -274,15 +287,17 @@ void CVATAlgorithm::MakeGrayscaleImage(ATL::CImage& imgGray, CUIntArray& arrReor
 		imgGray.SetPixel(x, x, RGB(0, 0, 0));
 		for(int y=0; y < x; y++)
 		{
-			gray = scale * (*m_pDissimilarityMatrix)(arrReordered[x], arrReordered[y]);
+			gray = scale * (*m_matOrigninal)(arrReordered[x], arrReordered[y]);
 			c = RGB(gray, gray, gray);
 			imgGray.SetPixel(x, y, c);
 			imgGray.SetPixel(y, x, c);
 		}
 	}
 
+#ifdef _DEBUG
 	// Save file
 	imgGray.Save(szFilePath);
+#endif // _DEBUG
 }
 
 void CVATAlgorithm::MakeGrayscaleImage(ATL::CImage& imgGray, MatrixPtr mat, CString szFilePath)
@@ -312,13 +327,14 @@ void CVATAlgorithm::MakeGrayscaleImage(ATL::CImage& imgGray, MatrixPtr mat, CStr
 			imgGray.SetPixel(y, x, c);
 		}
 	}
-
+	
 	// Save file
 	imgGray.Save(szFilePath);
 }
 
 void CVATAlgorithm::InitFilePath(CString szFilePath)
 {
+#ifdef _DEBUG
 	CString szFileName;
 	CString szFolderPath;
 	CString szTmp;
@@ -330,12 +346,13 @@ void CVATAlgorithm::InitFilePath(CString szFilePath)
 	m_szOriFilePath.Format(_T("%s%s%s"), szFolderPath, szFileName, _T("_Original.jpg"));
 	m_szVATFilePath.Format(_T("%s%s%s"), szFolderPath, szFileName, _T("_VAT.jpg"));
 	m_sziVATFilePath.Format(_T("%s%s%s"), szFolderPath, szFileName, _T("_iVAT.jpg"));
+#endif // _DEBUG
 }
 
 void CVATAlgorithm::iVATAlgorithm()
 {
 	int r, c, j;
-	int nsize = m_iVATMatrix->size1();
+	int nsize = m_matiVAT->size1();
 	MatrixPtr iVAT(new Matrix(nsize, nsize));
 	iVAT->clear();
 	m_MaxDis.distance = 0.0;
@@ -343,10 +360,10 @@ void CVATAlgorithm::iVATAlgorithm()
 	for (r = 1; r < nsize; ++r)
 	{
 		// 1. find min
-		j = FindMinOnRow(m_iVATMatrix, r);
+		j = FindMinOnRow(m_matiVAT, r);
 
 		// 2. 
-		(*iVAT)(r, j) = (*m_iVATMatrix)(r, j);
+		(*iVAT)(r, j) = (*m_matiVAT)(r, j);
 		(*iVAT)(j, r) = (*iVAT)(r, j);
 		if (m_MaxDis.distance < (*iVAT)(r, j)) m_MaxDis.distance = (*iVAT)(r, j);
 
@@ -354,15 +371,15 @@ void CVATAlgorithm::iVATAlgorithm()
 		for (c = 0; c < r; c++)
 		{
 			if (c == j) continue;
-			(*iVAT)(r, c) = max((*m_iVATMatrix)(r, j), (*iVAT)(j, c));
+			(*iVAT)(r, c) = max((*m_matiVAT)(r, j), (*iVAT)(j, c));
 			(*iVAT)(c, r) = (*iVAT)(r, c);
 			if (m_MaxDis.distance < (*iVAT)(r, c)) m_MaxDis.distance = (*iVAT)(r, c);
 		}
 	}
 
-	m_iVATMatrix->clear();
-	m_iVATMatrix.reset();
-	m_iVATMatrix = iVAT;
+	m_matiVAT->clear();
+	m_matiVAT.reset();
+	m_matiVAT = iVAT;
 }
 
 int	CVATAlgorithm::FindMinOnRow(MatrixPtr mat, int row)
@@ -383,4 +400,84 @@ int	CVATAlgorithm::FindMinOnRow(MatrixPtr mat, int row)
 	}
 
 	return col;
+}
+
+//////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
+
+void CVATAlgorithm::ModifyVAT(MatrixPtr mat)
+{
+	int nsize;
+	int i, j;
+	int* J;
+	BOOL bInsFirst = FALSE;
+	int first, last;
+
+	nsize = mat->size1();
+	J = new int[nsize];
+	
+	for (j = 0; j < nsize; ++j)	{
+		J[j] = j;
+	}
+	m_deVAT.clear();
+
+	// Step 2: Select the first object.
+	i = m_MaxDis.iObj;
+	m_deVAT.push_back(i);
+	J[i] = -1;
+
+	first = last = i;
+	// Step 3: loop find the min.
+	for (int t = 1; t < nsize; ++t)
+	{
+		// find the min R_ij;
+		j = FindMinDis(mat, first, last, J, bInsFirst);
+		ASSERT(j != -1);
+		if (bInsFirst) {
+			m_deVAT.push_front(j);
+			first = j;
+		} else {
+			m_deVAT.push_back(j);
+			last = j;
+		}
+
+		J[j] = -1;
+	}
+
+	// Fill iVAT matrix.
+	m_matiVAT->clear();
+	for (i = 0; i < nsize; ++i)
+	{
+		for (j = 0; j < i; ++j)
+		{
+			(*m_matiVAT)(i, j) = (*m_matiVAT)(j, i) = (*mat)(m_deVAT[i], m_deVAT[j]);
+		}
+	}
+
+	delete[] J;
+}
+
+int CVATAlgorithm::FindMinDis(MatrixPtr mat, int first, int last, int* J, BOOL& bInsFirst)
+{
+	int ret = -1;
+	int nsize = mat->size1();
+	double dmin = m_MaxDis.distance;
+
+	for (int j = 0; j < nsize; j++)	{
+		if (J[j] == -1) continue;
+
+		if (dmin > (*mat)(first, j)) {
+			dmin = (*mat)(first, j);
+			ret  = j;
+			bInsFirst = TRUE;
+		}
+
+		if (dmin > (*mat)(last, j)) {
+			dmin = (*mat)(last, j);
+			ret  = j;
+			bInsFirst = FALSE;
+		}
+	}
+
+	return ret;
 }

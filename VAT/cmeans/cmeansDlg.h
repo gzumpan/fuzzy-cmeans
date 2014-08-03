@@ -44,8 +44,10 @@ public:
 	void	UpdateStatus(BOOL bStart = FALSE, BOOL bStop = FALSE);
 
 private:
+	void	InitRenderData(Matrix& dataset, int width, int height);
 	BOOL	InitFCM(CFCMReadFile& fcmReadFile);
 	void	DrawImage();
+	void	DrawGraph();
 
 private:
 	CButton m_btnStart;
@@ -57,6 +59,10 @@ private:
 	CLogger*				m_pLogger;
 	CFCMReadFile*			m_pfcmReadFile;
 	CString					m_szFilePath;
+
+	// Data for render.
+	double*					m_pRenderData;
+	int						m_nSizeRender;
 
 public:
 	afx_msg void OnBnClickedBtnStart();

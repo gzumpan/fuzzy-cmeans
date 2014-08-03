@@ -4,6 +4,10 @@
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/smart_ptr.hpp>
+//#include <boost/fusion/include/deque.hpp>
+//#include <boost/fusion/include/deque_fwd.hpp>
+//#include <boost/fusion/include/at_c.hpp>
+#include <boost/fusion/container.hpp>
 
 // Data type.
 typedef boost::numeric::ublas::vector<double> Vector;
